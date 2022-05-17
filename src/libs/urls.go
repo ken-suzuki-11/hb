@@ -11,56 +11,53 @@ import (
 const maxCount int = 2000000000
 
 type URLs struct {
-	file  string
-	limit int64
+	Count int
+	Host  string
+	Data  []*url.URL
 }
 
-func NewURLs(file string, limit int64) *URLs {
-	return &URLs{
-		file:  file,
-		limit: limit,
-	}
-}
-
-func (u URLs) Load() (int, []*url.URL, error) {
-	count := 0
-	var data []*url.URL
+func (u *URLs) Load(filepath string, limit int64) error {
 	// File open
-	file, err := u.openFile()
+	file, err := u.openFile(filepath, limit)
 	if err != nil {
 		fmt.Println("Error : ファイルのオープンに失敗しました")
-		return count, data, errors.Wrap(err, "openFile")
+		return errors.Wrap(err, "openFile")
 	}
 	// パスリストの読み込み
-	count, listData, err := u.loadData(file)
+	count, host, listData, err := u.loadData(file)
 	if err != nil {
 		fmt.Println("Error : リストの読み込みに失敗しました")
-		return count, data, errors.Wrap(err, "loadData")
+		return errors.Wrap(err, "loadData")
 	}
+	// 値を設定
+	u.Count = count
+	u.Host = host
+	u.Data = listData
 	// 正常終了
-	return count, listData, nil
+	return nil
 }
 
-func (u URLs) openFile() (*os.File, error) {
-	info, err := os.Stat(u.file)
+func (u URLs) openFile(filepath string, limit int64) (*os.File, error) {
+	info, err := os.Stat(filepath)
 	if os.IsNotExist(err) {
-		fmt.Printf("Error : リストファイルが存在しません\n")
+		fmt.Printf("Error : ファイルが存在しません : %s\n", filepath)
 		return nil, errors.New("path list not found")
 	}
-	if info.Size() > u.limit {
+	if info.Size() > limit {
 		fmt.Println("Error : 読み込み容量オーバー")
-		fmt.Printf("List Size : %dByte (%d)\n", info.Size(), u.limit)
+		fmt.Printf("List Size : %dByte (%d)\n", info.Size(), limit)
 		return nil, errors.New("file size too large")
 	}
-	file, err := os.Open(u.file)
+	file, err := os.Open(filepath)
 	if err != nil {
-		fmt.Printf("Error : ファイルオープンエラー : %s\n", u.file)
+		fmt.Printf("Error : ファイルオープンエラー : %s\n", filepath)
 		return nil, errors.New("file open error")
 	}
 	return file, nil
 }
 
-func (u URLs) loadData(file *os.File) (int, []*url.URL, error) {
+func (u URLs) loadData(file *os.File) (int, string, []*url.URL, error) {
+	var host string
 	// レスポンス用データ
 	var data []*url.URL
 	// Scanner作成
@@ -74,25 +71,26 @@ func (u URLs) loadData(file *os.File) (int, []*url.URL, error) {
 		urlInfo, err := u.parseUrl(line)
 		if err != nil {
 			fmt.Printf("Error : Parseに失敗しました : %s\n", line)
-			return 0, nil, errors.Wrap(err, "parse url")
+			return 0, "", nil, errors.Wrap(err, "parse url")
 		}
 		_, ok := hostMap[urlInfo.Host]
 		if !ok {
+			host = urlInfo.Host
 			hostMap[urlInfo.Host] = 1
 		}
 		data = append(data, urlInfo)
 		count += 1
 		if count > maxCount {
 			fmt.Printf("Error : 処理可能な行数を超えました : %d\n", count)
-			return 0, nil, errors.New("count too large")
+			return 0, "", nil, errors.New("count too large")
 		}
 	}
 	// ホストチェック
 	if len(hostMap) != 1 {
 		fmt.Println("Error : 複数のホストが含まれています")
-		return 0, nil, errors.New("input host error")
+		return 0, "", nil, errors.New("input host error")
 	}
-	return count, data, nil
+	return count, host, data, nil
 }
 
 func (u URLs) parseUrl(line string) (*url.URL, error) {

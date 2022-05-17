@@ -5,3 +5,5 @@ function  = "sequential"
 
 [sequential]
 
+[wg_parallel]
+

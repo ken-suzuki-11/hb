@@ -31,8 +31,8 @@ func main() {
 	// デバッグの有無
 	isDebug := config.Common.Debug
 	// URLリストの読み込み
-	urls := libs.NewURLs(urlListFile, config.Common.ListSizeLimit)
-	count, urlList, err := urls.Load()
+	urls := &libs.URLs{}
+	err = urls.Load(urlListFile, config.Common.ListSizeLimit)
 	if err != nil {
 		fmt.Println("Error : URLリストの読み込みに失敗しました")
 		if isDebug {
@@ -45,13 +45,26 @@ func main() {
 	case "sequential":
 		fmt.Println("シーケンシャルベンチマーク")
 		function := libs.NewSequential(config)
-		err := function.Run(count, urlList)
+		err := function.Run(urls)
 		if err != nil {
 			fmt.Println("シーケンシャルベンチマークでエラーが発生しました")
 			if isDebug {
 				fmt.Printf("\n[StackTrace]\n%+v\n", err)
 			}
 		}
+		/*
+			case "wg_parallel":
+				fmt.Println("WaitGroupパラレルベンチマーク")
+				function := libs.NewWgParallel(config)
+				err := function.Run(count, urlList)
+				if err != nil {
+					fmt.Println("WaitGroupパラレルベンチマークでエラーが発生しました")
+					if isDebug {
+						fmt.Printf("\n[StackTrace]\n%+v\n", err)
+					}
+				}
+
+		*/
 	default:
 		fmt.Println("存在しない機能です")
 	}

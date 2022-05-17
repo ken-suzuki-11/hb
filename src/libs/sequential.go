@@ -1,13 +1,9 @@
 package libs
 
 import (
-	"crypto/tls"
 	"fmt"
-	"github.com/cheggaaa/pb"
 	"github.com/pkg/errors"
-	"net/http"
-	"net/url"
-	"time"
+	"io/ioutil"
 )
 
 type Sequential struct{}
@@ -17,9 +13,11 @@ func NewSequential(config *Config) *Sequential {
 	return s
 }
 
-func (s *Sequential) Run(count int, urls []*url.URL) error {
+func (s Sequential) Run(urls *URLs) error {
+	// create http client pool
+	pool := NewHttpClientPool(1, urls.Host)
 	// Bench
-	err := s.benchmark(count, urls)
+	err := s.benchmark(pool, urls)
 	if err != nil {
 		fmt.Println("Error : ベンチマークに失敗しました")
 		return errors.Wrap(err, "benchmark")
@@ -28,65 +26,40 @@ func (s *Sequential) Run(count int, urls []*url.URL) error {
 	return nil
 }
 
-func (s Sequential) benchmark(count int, data []*url.URL) error {
-	firstData := data[0]
-	host := firstData.Host
+func (s Sequential) benchmark(pool *HttpClientPool, urls *URLs) error {
+	// エラーカウント
+	maxErrorCount := 5
+	// 初期化
+	result := NewResult(urls.Count)
 
-	httpClient := http.Client{
-		Transport: &http.Transport{
-			MaxIdleConns:       10,
-			IdleConnTimeout:    30 * time.Second,
-			DisableCompression: true,
-			TLSClientConfig: &tls.Config{
-				ServerName: host,
-			},
-		},
-	}
-
-	successCount := 0
-	notFoundCount := 0
-	errorCount := 0
-	unknownCount := 0
-
-	fmt.Println("Benchmark Start")
-
-	// プログレスバー初期化
-	bar := pb.StartNew(count)
-	// ベンチマーク開始
-	// 開始時刻を取得
-	start := time.Now()
-	for _, requestInfo := range data {
+	// ループ処理
+	for i, requestInfo := range urls.Data {
+		// エラーの数が maxErrorCount を上回った場合に処理を停止
+		if result.ErrorCount > maxErrorCount {
+			return errors.New("error count exceed")
+		}
+		// URLを生成
 		targetUrl := fmt.Sprintf("%s://%s%s", requestInfo.Scheme, requestInfo.Host, requestInfo.Path)
-		resp, err := httpClient.Get(targetUrl)
+		// pool内のhttpクライアントを利用してGETリクエスト
+		index := i % pool.Num
+		resp, err := pool.Clients[index].Get(targetUrl)
 		if err != nil {
-			errorCount += 1
-			fmt.Printf("%+v\n", err)
-			return errors.Wrap(err, "http client get")
+			result.ErrorCount += 1
+			continue
 		}
-		switch resp.StatusCode {
-		case 200:
-			successCount += 1
-		case 404:
-			notFoundCount += 1
-		default:
-			unknownCount += 1
+		// keepalive 用にデータを読み込む
+		_, err = ioutil.ReadAll(resp.Body)
+		if err != nil {
+			result.ErrorCount += 1
+			continue
 		}
-		bar.Increment()
+		err = resp.Body.Close()
+		// ステータスコードのカウントをインクリメント
+		result.AddCount(resp.StatusCode)
 	}
 
 	// ベンチマーク終了
-	bar.FinishPrint("Benchmark End\n")
-	end := time.Now()
-	totalTime := end.Sub(start).Seconds()
+	result.Finish()
 
-	fmt.Println("### ベンチマーク結果 ###")
-	fmt.Printf("実行回数 : %d回\n", count)
-	fmt.Printf("実行時間: %v秒\n", totalTime)
-	fmt.Printf("平均処理速度: %v秒\n", totalTime/float64(count))
-
-	fmt.Println(successCount)
-	fmt.Println(notFoundCount)
-	fmt.Println(errorCount)
-	fmt.Println(unknownCount)
 	return nil
 }
