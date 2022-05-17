@@ -54,9 +54,9 @@ func main() {
 			}
 		}
 
-	case "wg_parallel":
+	case "parallel":
 		fmt.Println("WaitGroupパラレルベンチマーク")
-		function := libs.NewWgParallel(config)
+		function := libs.NewParallel(config)
 		err := function.Run(urls)
 		if err != nil {
 			fmt.Println("WaitGroupパラレルベンチマークでエラーが発生しました")

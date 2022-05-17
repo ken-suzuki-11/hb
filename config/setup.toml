@@ -1,9 +1,9 @@
 [common]
 list_size_limit = 5000000 # 5MByte
 debug     = true
-function  = "wg_parallel"
+function  = "parallel"
 
 [sequential]
 
-[wg_parallel]
+[parallel]
 process_num = 2

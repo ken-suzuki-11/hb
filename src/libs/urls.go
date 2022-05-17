@@ -17,10 +17,11 @@ type URLs struct {
 	Host  string
 	Data  []*url.URL
 }
-func (u *URLs) Split(num int) []*URLs{
+
+func (u *URLs) Split(num int) []*URLs {
 	var list []*URLs
-//	list := make([]*URLs,num)
-	for i:=0; i<num; i++ {
+	//	list := make([]*URLs,num)
+	for i := 0; i < num; i++ {
 		urls := URLs{}
 		urls.Host = u.Host
 		list = append(list, &urls)
@@ -36,21 +37,19 @@ func (u *URLs) AddUrl(urlInfo *url.URL) {
 	u.Data = append(u.Data, urlInfo)
 }
 
-
-
-
-
 // URLsTool URLsを操作するための構造体
 type URLsTool struct {
 	Filepath string
-	Limit int64
+	Limit    int64
 }
-func NewURLsTool(filepath string, limit int64) *URLsTool{
+
+func NewURLsTool(filepath string, limit int64) *URLsTool {
 	return &URLsTool{
 		Filepath: filepath,
-		Limit: limit,
+		Limit:    limit,
 	}
 }
+
 // Load ファイルからリストを生成するためのレシーバ関数
 func (u URLsTool) Load() (*URLs, error) {
 	urls := URLs{}
@@ -147,4 +146,3 @@ func (u URLsTool) parseUrl(line string) (*url.URL, error) {
 	}
 	return urlInfo, nil
 }
-
