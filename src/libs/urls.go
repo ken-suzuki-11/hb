@@ -8,36 +8,74 @@ import (
 	"os"
 )
 
-const maxCount int = 2000000000
+// 読み込める行数はint未満にする必要がある
+const maxLineCount int = 2000000000
 
+// URLs urlのリスト構造体
 type URLs struct {
 	Count int
 	Host  string
 	Data  []*url.URL
 }
+func (u *URLs) Split(num int) []*URLs{
+	var list []*URLs
+//	list := make([]*URLs,num)
+	for i:=0; i<num; i++ {
+		urls := URLs{}
+		urls.Host = u.Host
+		list = append(list, &urls)
+	}
+	for i, urlInfo := range u.Data {
+		splitNumber := i % num
+		list[splitNumber].AddUrl(urlInfo)
+	}
+	return list
+}
+func (u *URLs) AddUrl(urlInfo *url.URL) {
+	u.Count += 1
+	u.Data = append(u.Data, urlInfo)
+}
 
-func (u *URLs) Load(filepath string, limit int64) error {
+
+
+
+
+// URLsTool URLsを操作するための構造体
+type URLsTool struct {
+	Filepath string
+	Limit int64
+}
+func NewURLsTool(filepath string, limit int64) *URLsTool{
+	return &URLsTool{
+		Filepath: filepath,
+		Limit: limit,
+	}
+}
+// Load ファイルからリストを生成するためのレシーバ関数
+func (u URLsTool) Load() (*URLs, error) {
+	urls := URLs{}
+
 	// File open
-	file, err := u.openFile(filepath, limit)
+	file, err := u.openFile(u.Filepath, u.Limit)
 	if err != nil {
 		fmt.Println("Error : ファイルのオープンに失敗しました")
-		return errors.Wrap(err, "openFile")
+		return nil, errors.Wrap(err, "openFile")
 	}
 	// パスリストの読み込み
 	count, host, listData, err := u.loadData(file)
 	if err != nil {
 		fmt.Println("Error : リストの読み込みに失敗しました")
-		return errors.Wrap(err, "loadData")
+		return nil, errors.Wrap(err, "loadData")
 	}
 	// 値を設定
-	u.Count = count
-	u.Host = host
-	u.Data = listData
+	urls.Count = count
+	urls.Host = host
+	urls.Data = listData
 	// 正常終了
-	return nil
+	return &urls, nil
 }
 
-func (u URLs) openFile(filepath string, limit int64) (*os.File, error) {
+func (u URLsTool) openFile(filepath string, limit int64) (*os.File, error) {
 	info, err := os.Stat(filepath)
 	if os.IsNotExist(err) {
 		fmt.Printf("Error : ファイルが存在しません : %s\n", filepath)
@@ -56,7 +94,7 @@ func (u URLs) openFile(filepath string, limit int64) (*os.File, error) {
 	return file, nil
 }
 
-func (u URLs) loadData(file *os.File) (int, string, []*url.URL, error) {
+func (u URLsTool) loadData(file *os.File) (int, string, []*url.URL, error) {
 	var host string
 	// レスポンス用データ
 	var data []*url.URL
@@ -80,7 +118,7 @@ func (u URLs) loadData(file *os.File) (int, string, []*url.URL, error) {
 		}
 		data = append(data, urlInfo)
 		count += 1
-		if count > maxCount {
+		if count > maxLineCount {
 			fmt.Printf("Error : 処理可能な行数を超えました : %d\n", count)
 			return 0, "", nil, errors.New("count too large")
 		}
@@ -93,7 +131,7 @@ func (u URLs) loadData(file *os.File) (int, string, []*url.URL, error) {
 	return count, host, data, nil
 }
 
-func (u URLs) parseUrl(line string) (*url.URL, error) {
+func (u URLsTool) parseUrl(line string) (*url.URL, error) {
 	urlInfo, err := url.Parse(line)
 	if err != nil {
 		return nil, err
@@ -109,3 +147,4 @@ func (u URLs) parseUrl(line string) (*url.URL, error) {
 	}
 	return urlInfo, nil
 }
+
