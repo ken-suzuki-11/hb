@@ -7,14 +7,14 @@ import (
 )
 
 type Config struct {
-	Common     CommonConfig     `toml:"common" validate:"required"`
-	Function   FunctionConfig  `toml:"function" validate:"required"`
+	Common   CommonConfig   `toml:"common" validate:"required"`
+	Function FunctionConfig `toml:"function" validate:"required"`
 	Parallel ParallelConfig `toml:"parallel" validate:"required"`
 }
 type CommonConfig struct {
-	ListSizeLimit int64  `toml:"list_size_limit" validate:"required"`
-	Debug         bool   `toml:"debug" validate:"required"`
-	Timeout       int    `toml:"timeout" validate:"required"`
+	ListSizeLimit int64 `toml:"list_size_limit" validate:"required"`
+	Debug         bool  `toml:"debug" validate:"required"`
+	Timeout       int   `toml:"timeout" validate:"required"`
 }
 type FunctionConfig struct {
 	Name string `toml:"name" validate:"required"`

@@ -10,7 +10,7 @@ import (
 
 type Parallel struct {
 	ProcessNum int
-	Timeout int
+	Timeout    int
 }
 
 func NewParallel(config *Config) *Parallel {
@@ -57,7 +57,7 @@ func (s Parallel) parallelBenchmark(ctx context.Context, wPipe chan<- int, pool 
 	wPipe <- -1
 }
 
-func (s Parallel)sequentialBenchmark(ctx context.Context, wPipe chan<- int, httpClient http.Client, urls *URLs) {
+func (s Parallel) sequentialBenchmark(ctx context.Context, wPipe chan<- int, httpClient http.Client, urls *URLs) {
 	// エラーカウント
 	errorCount := 0
 	maxErrorCount := 5
