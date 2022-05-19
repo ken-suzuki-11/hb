@@ -51,8 +51,8 @@ func (r *Result) Finish() {
 
 	fmt.Println("### ベンチマーク結果 ###")
 	fmt.Printf("実行回数: %d回\n", r.TotalCount)
-	fmt.Printf("実行時間: %0.2v秒\n", totalTime)
-	fmt.Printf("平均処理速度: %0.2v秒\n", totalTime/float64(r.TotalCount))
+	fmt.Printf("実行時間: %4.2v秒\n", totalTime)
+	fmt.Printf("平均処理速度: %2.2v秒\n", totalTime/float64(r.TotalCount))
 	fmt.Printf("Status 200 : %d\n", r.OkCount)
 	fmt.Printf("Status 404 : %d\n", r.NotFoundCount)
 	fmt.Printf("Status Error : %d\n", r.ErrorCount)

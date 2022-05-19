@@ -3,7 +3,6 @@ package libs
 import (
 	"fmt"
 	"github.com/pkg/errors"
-	"io/ioutil"
 )
 
 type Sequential struct{}
@@ -48,12 +47,14 @@ func (s Sequential) benchmark(pool *HttpClientPool, urls *URLs) error {
 			continue
 		}
 		// keepalive 用にデータを読み込む
+		/*
 		_, err = ioutil.ReadAll(resp.Body)
 		if err != nil {
 			result.ErrorCount += 1
 			continue
 		}
 		err = resp.Body.Close()
+		*/
 		// ステータスコードのカウントをインクリメント
 		result.AddCount(resp.StatusCode)
 	}

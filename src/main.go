@@ -16,7 +16,7 @@ func main() {
 	flag.StringVar(&urlListFile, "u", "nil", "url list file path")
 	flag.Parse()
 	// フラグの値をチェック
-	if configFile == "" || urlListFile == "" {
+	if &configFile == nil || &urlListFile == nil {
 		fmt.Println("Usage: ./prog -c config_path -u url_list_path")
 		os.Exit(-1)
 	}
