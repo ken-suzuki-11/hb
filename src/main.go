@@ -15,6 +15,11 @@ func main() {
 	flag.StringVar(&configFile, "c", "nil", "config file path")
 	flag.StringVar(&urlListFile, "u", "nil", "url list file path")
 	flag.Parse()
+	// フラグの値をチェック
+	if configFile == "" || urlListFile == "" {
+		fmt.Println("Usage: ./prog -c config_path -u url_list_path")
+		os.Exit(-1)
+	}
 	// 設定ファイルチェック
 	_, err := os.Stat(configFile)
 	if os.IsNotExist(err) {
@@ -41,7 +46,7 @@ func main() {
 		os.Exit(-1)
 	}
 	// ベンチマーク
-	switch config.Common.Function {
+	switch config.Function.Name {
 
 	case "sequential":
 		fmt.Println("シーケンシャルベンチマーク")

@@ -10,11 +10,13 @@ import (
 
 type Parallel struct {
 	ProcessNum int
+	Timeout int
 }
 
 func NewParallel(config *Config) *Parallel {
 	s := &Parallel{}
 	s.ProcessNum = config.Parallel.ProcessNum
+	s.Timeout = config.Common.Timeout
 	return s
 }
 
@@ -28,7 +30,7 @@ func (s Parallel) Run(urls *URLs) error {
 	ctx := context.Background()
 	pipe := make(chan int, 50)
 	// ベンチマーク開始
-	go parallelBenchmark(ctx, pipe, pool, splitUrls)
+	go s.parallelBenchmark(ctx, pipe, pool, splitUrls)
 	// 結果を収集
 	for i := 0; i < urls.Count; i++ {
 		res := <-pipe
@@ -44,18 +46,18 @@ func (s Parallel) Run(urls *URLs) error {
 	return nil
 }
 
-func parallelBenchmark(ctx context.Context, wPipe chan<- int, pool *HttpClientPool, urls []*URLs) {
+func (s Parallel) parallelBenchmark(ctx context.Context, wPipe chan<- int, pool *HttpClientPool, urls []*URLs) {
 	childCtx, cancel := context.WithCancel(ctx)
 	for i, httpClient := range pool.Clients {
-		go sequentialBenchmark(childCtx, wPipe, httpClient, urls[i])
+		go s.sequentialBenchmark(childCtx, wPipe, httpClient, urls[i])
 	}
 	// 10秒でタイムアウト
-	time.Sleep(10 * time.Second)
+	time.Sleep(time.Duration(s.Timeout) * time.Second)
 	cancel()
 	wPipe <- -1
 }
 
-func sequentialBenchmark(ctx context.Context, wPipe chan<- int, httpClient http.Client, urls *URLs) {
+func (s Parallel)sequentialBenchmark(ctx context.Context, wPipe chan<- int, httpClient http.Client, urls *URLs) {
 	// エラーカウント
 	errorCount := 0
 	maxErrorCount := 5

@@ -1,7 +1,10 @@
 [common]
 list_size_limit = 5000000 # 5MByte
 debug     = true
-function  = "parallel"
+timeout   = 300 # 5min
+
+[function]
+name  = "parallel"
 
 [sequential]
 

@@ -8,12 +8,16 @@ import (
 
 type Config struct {
 	Common     CommonConfig     `toml:"common" validate:"required"`
+	Function   FunctionConfig  `toml:"function" validate:"required"`
 	Parallel ParallelConfig `toml:"parallel" validate:"required"`
 }
 type CommonConfig struct {
-	Function      string `toml:"function" validate:"required"`
 	ListSizeLimit int64  `toml:"list_size_limit" validate:"required"`
 	Debug         bool   `toml:"debug" validate:"required"`
+	Timeout       int    `toml:"timeout" validate:"required"`
+}
+type FunctionConfig struct {
+	Name string `toml:"name" validate:"required"`
 }
 type ParallelConfig struct {
 	ProcessNum int `toml:"process_num" validate:"required"`
