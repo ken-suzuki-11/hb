@@ -3,10 +3,11 @@ list_size_limit = 5000000 # 5MByte
 debug     = true
 timeout   = 300 # 5min
 
+[http]
+disable_keepalive = false
+
 [function]
 name  = "parallel"
-
-[sequential]
 
 [parallel]
 process_num = 2

@@ -8,56 +8,87 @@ import (
 	"time"
 )
 
-type Parallel struct {
+const (
+	BenchmarkTimeout int = -1
+	BenchMarkError   int = -2
+)
+
+type ParallelBenchmark struct {
 	ProcessNum int
+	TotalCount int
 	Timeout    int
+	HttpPool []http.Client
+	SplitURLs  []*URLs
+	Result *Result
 }
 
-func NewParallel(config *Config) *Parallel {
-	s := &Parallel{}
-	s.ProcessNum = config.Parallel.ProcessNum
-	s.Timeout = config.Common.Timeout
-	return s
+func NewParallelBenchmark(config *Config, urls *URLs) *ParallelBenchmark {
+	p := &ParallelBenchmark{}
+	// 並列数初期化
+	p.ProcessNum = config.Parallel.ProcessNum
+	// 実行回数初期化
+	p.TotalCount = urls.Count
+	// タイムアウト値初期化
+	p.Timeout = config.Common.Timeout
+	// HTTP Client Pool 初期化
+	tool := NewHttpClientPoolTool(config)
+	p.HttpPool = tool.CreatePool(config.Parallel.ProcessNum, urls.Host)
+	// URLの分割
+	p.SplitURLs = urls.Split(config.Parallel.ProcessNum)
+	// 結果の初期化
+	p.Result = NewResult(urls.Count)
+	return p
 }
 
-func (s Parallel) Run(urls *URLs) error {
-	// split url
-	splitUrls := urls.Split(s.ProcessNum)
-	// create http client pool
-	pool := NewHttpClientPool(s.ProcessNum, urls.Host)
-	// 初期化
-	result := NewResult(urls.Count)
+func (p ParallelBenchmark) Run() error {
+	// コンテキスト作成
 	ctx := context.Background()
-	pipe := make(chan int, 50)
+	childCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	// Result Reset
+	p.Result.StartTimeReset()
 	// ベンチマーク開始
-	go s.parallelBenchmark(ctx, pipe, pool, splitUrls)
+	rPipe := p.benchmark(childCtx)
 	// 結果を収集
-	for i := 0; i < urls.Count; i++ {
-		res := <-pipe
-		if res == -1 {
-			// ベンチマークタイムアウト
+	for i := 0; i < p.TotalCount; i++ {
+		res := <-rPipe
+		if res == BenchmarkTimeout {
+			fmt.Println("ベンチマークタイムアウト")
+			cancel()
 			break
+		} else if res == BenchMarkError {
+			fmt.Println("ベンチマークエラー")
+			cancel()
+			break
+		} else {
+			p.Result.AddCount(res)
 		}
-		result.AddCount(res)
 	}
 	// ベンチマーク終了
-	result.Finish()
+	p.Result.Finish()
 	// 正常終了
 	return nil
 }
 
-func (s Parallel) parallelBenchmark(ctx context.Context, wPipe chan<- int, pool *HttpClientPool, urls []*URLs) {
-	childCtx, cancel := context.WithCancel(ctx)
-	for i, httpClient := range pool.Clients {
-		go s.sequentialBenchmark(childCtx, wPipe, httpClient, urls[i])
-	}
-	// 10秒でタイムアウト
-	time.Sleep(time.Duration(s.Timeout) * time.Second)
-	cancel()
-	wPipe <- -1
+func (p ParallelBenchmark) benchmark(ctx context.Context) <-chan int {
+	// 結果通知用チャンネル
+	pipe := make(chan int)
+	// ベンチマーク開始
+	go p.parallelProcess(ctx, pipe)
+	return pipe
 }
 
-func (s Parallel) sequentialBenchmark(ctx context.Context, wPipe chan<- int, httpClient http.Client, urls *URLs) {
+func (p ParallelBenchmark) parallelProcess(ctx context.Context, wPipe chan<- int) {
+	// 並列処理
+	for i, httpClient := range p.HttpPool {
+		go p.sequentialProcess(ctx, wPipe, httpClient, p.SplitURLs[i])
+	}
+	// タイムアウト
+	time.Sleep(time.Duration(p.Timeout) * time.Second)
+	wPipe <- BenchmarkTimeout
+}
+
+func (p ParallelBenchmark) sequentialProcess(ctx context.Context, wPipe chan<- int, httpClient http.Client, urls *URLs) {
 	// エラーカウント
 	errorCount := 0
 	maxErrorCount := 5
@@ -71,21 +102,21 @@ func (s Parallel) sequentialBenchmark(ctx context.Context, wPipe chan<- int, htt
 			// エラーの数が maxErrorCount を上回った場合に処理を停止
 			if errorCount > maxErrorCount {
 				fmt.Println("エラーが多すぎるため処理を中止しました")
-				wPipe <- -1
+				wPipe <- BenchMarkError
 				return
 			}
 			// リクエスト
 			resp, err := httpClient.Get(requestInfo.String())
 			if err != nil {
 				errorCount += 1
-				wPipe <- 500
+				wPipe <- HttpError
 				continue
 			}
 			// keepalive 用にデータを読み込む
 			_, err = ioutil.ReadAll(resp.Body)
 			if err != nil {
 				errorCount += 1
-				wPipe <- 500
+				wPipe <- HttpError
 				continue
 			}
 			err = resp.Body.Close()

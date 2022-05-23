@@ -48,23 +48,12 @@ func main() {
 	// ベンチマーク
 	switch config.Function.Name {
 
-	case "sequential":
-		fmt.Println("シーケンシャルベンチマーク")
-		function := libs.NewSequential(config)
-		err := function.Run(urls)
-		if err != nil {
-			fmt.Println("シーケンシャルベンチマークでエラーが発生しました")
-			if isDebug {
-				fmt.Printf("\n[StackTrace]\n%+v\n", err)
-			}
-		}
-
 	case "parallel":
-		fmt.Println("WaitGroupパラレルベンチマーク")
-		function := libs.NewParallel(config)
-		err := function.Run(urls)
+		fmt.Println("parallel ベンチマーク")
+		function := libs.NewParallelBenchmark(config,urls)
+		err := function.Run()
 		if err != nil {
-			fmt.Println("WaitGroupパラレルベンチマークでエラーが発生しました")
+			fmt.Println("エラーが発生しました")
 			if isDebug {
 				fmt.Printf("\n[StackTrace]\n%+v\n", err)
 			}

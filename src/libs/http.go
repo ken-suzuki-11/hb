@@ -6,14 +6,17 @@ import (
 	"time"
 )
 
-type HttpClientPool struct {
-	Num     int
-	Clients []http.Client
+type HttpClientPoolTool struct {
+	DisableKeepAlive bool
 }
 
-func NewHttpClientPool(num int, host string) *HttpClientPool {
-	client := HttpClientPool{}
+func NewHttpClientPoolTool(config *Config) *HttpClientPoolTool {
+	return &HttpClientPoolTool{
+		DisableKeepAlive: config.Http.DisableKeepalive,
+	}
+}
 
+func (h HttpClientPoolTool) CreatePool(num int, host string) []http.Client {
 	var pool []http.Client
 	for i := 0; i < num; i++ {
 		httpClient := http.Client{
@@ -24,12 +27,10 @@ func NewHttpClientPool(num int, host string) *HttpClientPool {
 				TLSClientConfig: &tls.Config{
 					ServerName: host,
 				},
+				DisableKeepAlives: h.DisableKeepAlive,
 			},
 		}
 		pool = append(pool, httpClient)
 	}
-	client.Num = num
-	client.Clients = pool
-
-	return &client
+	return pool
 }

@@ -6,6 +6,12 @@ import (
 	"time"
 )
 
+const (
+	HttpOk       int = 200
+	HttpNotFound int = 404
+	HttpError    int = 500
+)
+
 type Result struct {
 	TotalCount    int
 	OkCount       int
@@ -32,15 +38,19 @@ func (r *Result) AddCount(statusCode int) {
 	r.Bar.Increment()
 
 	switch statusCode {
-	case 200:
+	case HttpOk:
 		r.OkCount += 1
-	case 404:
+	case HttpNotFound:
 		r.NotFoundCount += 1
-	case 500:
+	case HttpError:
 		r.ErrorCount += 1
 	default:
 		r.OtherCount += 1
 	}
+}
+
+func (r *Result)StartTimeReset() {
+	r.StartTime = time.Now()
 }
 
 func (r *Result) Finish() {
